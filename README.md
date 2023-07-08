@@ -1,4 +1,4 @@
-# Manual Authentication
+# Laravel 10 Manual Authentication
 
 ## Manual auth in Laravel: registering
 
