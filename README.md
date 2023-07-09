@@ -3,8 +3,7 @@
 Laravel 10 Manual authentication with Barebone html.
 
 <details open>
-  <summary>Details</summary>
-  <br>
+  <summary>Quick Links</summary>
   <ul>
     <li><a href="#manual-auth-in-laravel-registering">Registering Email</a></li>
     <li><a href="#signing-in-and-out">Sign in and Sign out</a></li>
