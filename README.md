@@ -2,6 +2,17 @@
 
 Laravel 10 Manual authentication with Barebone html.
 
+<details open>
+  <summary>Details</summary>
+  <ul>
+    <li><a href="#manual-auth-in-laravel-registering">Registering Email</a></li>
+    <li><a href="#signing-in-and-out">Sign in and Sign out</a></li>
+    <li><a href="#password-confirmation">Password Confirmation</a></li>
+    <li><a href="#laravel-email-verification">Email Verification</a></li>
+    <li><a href="#forgot-password-and-reset-password">Forgot Password and Reset Password</a></li>
+  </ul>
+</details>
+
 ## Manual auth in Laravel: registering
 
 ### Getting started
@@ -701,7 +712,7 @@ Route::post('/posts', [PostController::class, 'create'])
     ->name('posts.create');
 ```
 
-## Password Reset 
+## Forgot Password and Reset Password
 
 User model implements the `Illuminate\Contracts\Auth\CanResetPassword` contract.
 The User model included with the framework already implements this interface, 
