@@ -2,6 +2,8 @@
 @section('content')
 <h1>Confirm Password</h1>
 
+@include('partials.errors')
+
 <form  action="{{ route('password.confirm') }}" method="post">
     @csrf
 

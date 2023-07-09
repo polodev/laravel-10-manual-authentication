@@ -1,5 +1,7 @@
 # Laravel 10 Manual Authentication
 
+Laravel 10 Manual authentication with Barebone html.
+
 ## Manual auth in Laravel: registering
 
 ### Getting started
@@ -632,7 +634,8 @@ Next, we'll add a form in our view to allow the user to request another link:
 <!-- resources/views/auth/verify-email.blade.php -->
 
 <form action="{{ route('verification.request') }}" method="post">
-    <button type="submit">Request a new link</button>
+  @csrf
+  <button type="submit">Request a new link</button>
 </form>
 ```
 
@@ -679,7 +682,7 @@ Afterward, we'll add the routing:
 
 use Illuminate\Support\Facades\Route;
 
-Route::post('/verify-email/{id}/{hash}', [EmailVerificationController::class, 'verify'])
+Route::get('/verify-email/{id}/{hash}', [EmailVerificationController::class, 'verify'])
     ->middleware(['auth', 'signed']) // <-- don't remove "signed"
     ->name('verification.verify'); // <-- don't change the route name
 ```
@@ -697,6 +700,207 @@ Route::post('/posts', [PostController::class, 'create'])
     ->middleware(['auth', 'verified']) // <!-- add the "verified" middleware
     ->name('posts.create');
 ```
+
+## Password Reset 
+
+User model implements the `Illuminate\Contracts\Auth\CanResetPassword` contract.
+The User model included with the framework already implements this interface, 
+and uses the `Illuminate\Auth\Passwords\CanResetPassword` trait to include the methods needed to implement the interface.
+
+### Preparation
+
+Before adding the verification functionality, we first have to prepare the User model.
+
+Add `CanResetPassword` in your User model:
+
+```php
+// app/Models/User.php
+
+use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Auth\CanResetPassword;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+
+class User extends Authenticatable implements MustVerifyEmail, , CanResetPassword
+{
+    //
+}
+```
+
+`password_reset_tokens` database table already exists with laravel installation.    
+
+Just run `php artisan migrate`  to migrate.
+
+### Routes for forgot password and reset password 
+
+First we need to make a controller `ForgotPasswordController` and add following routes
+
+~~~php
+php artisan make:controller Auth/ForgotPasswordController
+~~~
+
+
+
+~~~php
+Route::get('/forgot-password', [ForgotPasswordController::class, 'forgot_password'])->middleware('guest')->name('password.request');
+Route::post('/forgot-password', [ForgotPasswordController::class, 'forgot_password_handle'] )->middleware('guest')->name('password.email');
+Route::get('/reset-password/{token}', [ForgotPasswordController::class, 'reset_password'])->middleware('guest')->name('password.reset');
+Route::post('/reset-password', [ForgotPasswordController::class, 'handle_reset_password']  )->middleware('guest')->name('password.update');
+~~~
+
+Controllers for all these routes are following 
+
+~~~php
+// Auth/ForgotPasswordController.php
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
+
+
+class ForgotPasswordController extends Controller
+{
+  public function forgot_password()
+  {
+    return view('auth.forgot-password');
+  }
+  public function forgot_password_handle(Request $request) {
+    $request->validate(['email' => 'required|email']);
+
+    $status = Password::sendResetLink(
+        $request->only('email')
+    );
+
+    return $status === Password::RESET_LINK_SENT
+                ? back()->with(['status' => __($status)])
+                : back()->withErrors(['email' => __($status)]);
+  }
+
+  public function reset_password(string $token) {
+    return view('auth.reset-password', ['token' => $token]);
+  }
+
+  public function handle_reset_password(Request $request) {
+
+    $request->validate([
+        'token' => 'required',
+        'email' => 'required|email',
+        'password' => 'required|min:6|confirmed',
+    ]);
+
+    $status = Password::reset(
+        $request->only('email', 'password', 'password_confirmation', 'token'),
+        function (User $user, string $password) {
+            $user->forceFill([
+                'password' => Hash::make($password)
+            ])->setRememberToken(Str::random(60));
+
+            $user->save();
+
+            event(new PasswordReset($user));
+        }
+    );
+
+    return $status === Password::PASSWORD_RESET
+                ? redirect()->route('login')->with('status', __($status))
+                : back()->withErrors(['email' => [__($status)]]);
+  }
+
+
+}
+~~~
+
+We have required 2 views. One for putting email for forgot password and one for resetting password.
+In case of reset password we need to pass reset `token` to our view
+
+Forgot password view
+
+~~~php
+// resources/views/auth/forgot-password.blade.php
+<h1>Forgot Password</h1>
+
+@include('partials.errors')
+
+<form  action="{{ route('password.email') }}"  method="post">
+    @csrf
+
+        <!-- Email-->
+    <label for="email">Email</label>
+    <input type="email" name="email" id="email"  />
+    <br>
+
+
+    <!-- Submit button -->
+    <button type="submit">submit</button>
+</form>
+~~~
+
+Reset password view
+
+~~~php
+<h1>Reset Password</h1>
+
+@include('partials.errors')
+
+<form  action="{{ route('password.update') }}"  method="post">
+
+    @csrf
+
+    <input type="hidden" name="token" value="{{ $token }}">
+
+    <!-- Email-->
+    <label for="email">Email</label>
+    <input type="email" name="email" id="email"  />
+    <br>
+
+    <!-- Password -->
+    <label for="password">Password</label>
+    <input type="password" name="password" id="password"  />
+    <br>
+
+    <!-- Confirm password -->
+    <label for="password_confirmation">Confirm password</label>
+    <input type="password" name="password_confirmation"  id="password_confirmation" />
+    <br>
+
+    <!-- Submit button -->
+    <button type="submit">Submit</button>
+</form>
+~~~
+
+I made a error partials as helpers which i have included in views
+
+~~~php
+// resources/views/partials/errors.blade.php
+@if(count($errors))
+<ul style='background: tomato; color: white;'>
+    @foreach ($errors->all() as $error)
+        <li>{{$error}}</li>
+    @endforeach
+</ul>
+@endif
+~~~
+
+
+
+
+## Other Settings 
+
+### Email template customization 
+
+~~~bash
+php artisan vendor:publish --tag=laravel-notifications
+php artisan vendor:publish --tag=laravel-mail
+~~~
+
+for further customization
+
+<https://laravel.com/docs/10.x/verification#customization>
+
 
 
 

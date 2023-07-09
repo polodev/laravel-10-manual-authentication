@@ -2,6 +2,8 @@
 @section('content')
 <h1>Register</h1>
 
+@include('partials.errors')
+
 <form  action="{{ route('register') }}"  method="post">
     @csrf
     <!-- Name -->
